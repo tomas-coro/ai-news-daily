@@ -1,0 +1,29 @@
+name: AI News Daily
+
+on:
+  schedule:
+    # 06:00 UTC = 08:00 ora italiana (ora legale CEST). In ora solare diventa 07:00.
+    - cron: "0 6 * * *"
+  workflow_dispatch:   # permette il lancio manuale dal sito GitHub (per i test)
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Send digest
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python ai_news_digest.py
