@@ -1,3 +1,5 @@
 .test_msg.json
 *.tmp
 payload*.json
+__pycache__/
+*.pyc

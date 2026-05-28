@@ -20,7 +20,7 @@ import feedparser
 
 # --- Config -----------------------------------------------------------------
 
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 LOOKBACK_HOURS = 48
 MAX_ITEMS_TO_GEMINI = 60      # quante news grezze passiamo al modello
 TELEGRAM_LIMIT = 4000        # margine sotto il limite reale di 4096
@@ -144,13 +144,31 @@ def call_gemini(prompt, api_key):
     )
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048},
+        "generationConfig": {
+            "temperature": 0.4,
+            "maxOutputTokens": 4096,
+            # gemini-2.5-flash usa il "thinking" che consuma il budget di output:
+            # lo azzeriamo per avere il testo completo del digest.
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
     data = json.dumps(payload).encode("utf-8")
-    req = request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    with request.urlopen(req, timeout=90) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-    return body["candidates"][0]["content"]["parts"][0]["text"].strip()
+    last_err = None
+    for attempt in range(4):
+        try:
+            req = request.Request(
+                url, data=data, headers={"Content-Type": "application/json"}
+            )
+            with request.urlopen(req, timeout=120) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            return body["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except error.HTTPError as exc:
+            last_err = exc
+            if exc.code in (429, 500, 503) and attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise
+    raise last_err
 
 
 # --- Telegram ---------------------------------------------------------------
