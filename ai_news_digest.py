@@ -93,6 +93,17 @@ def collect_items():
     return unique[:MAX_ITEMS_TO_GEMINI]
 
 
+# Categorie del digest: (chiave usata da Gemini, emoji, etichetta).
+CATEGORIES = [
+    ("annunci", "🚀", "Annunci & modelli"),
+    ("tool", "🛠️", "Tool & uso pratico"),
+    ("ricerca", "🔬", "Ricerca & paper"),
+    ("dibattito", "💬", "Dibattito & community"),
+    ("impara", "🎓", "Impara"),
+]
+CATEGORY_KEYS = [c[0] for c in CATEGORIES]
+
+
 # --- Gemini -----------------------------------------------------------------
 
 def build_prompt(items, today_str):
@@ -105,32 +116,25 @@ def build_prompt(items, today_str):
         )
     raw = "\n".join(lines) if lines else "(nessuna news trovata nei feed)"
     return f"""Sei l'editor di un digest quotidiano di news sull'intelligenza artificiale,\
- inviato su Telegram a un utente italiano appassionato di AI.
+ inviato su Telegram a un utente italiano appassionato di AI ({today_str}).
 
-Qui sotto trovi le news grezze raccolte oggi ({today_str}) da vari feed.\
- Scegli le 10-15 PIU' rilevanti e interessanti, scarta doppioni e roba di poco conto,\
- e scrivi il messaggio finale per Telegram.
+Qui sotto trovi le news grezze raccolte dai feed. Scegli le 10-15 PIU' rilevanti\
+ e interessanti, scarta doppioni e roba di poco conto.
 
-REGOLE DI FORMATO (testo semplice, NIENTE markdown, NIENTE asterischi):
-- Inizia con: "☀️ AI News — {today_str}"
-- Dividi in queste categorie (salta quelle vuote), con l'emoji e il titolo in maiuscolo:
-  🚀 ANNUNCI & MODELLI
-  🛠️ TOOL & USO PRATICO
-  🔬 RICERCA & PAPER
-  💬 DIBATTITO & COMMUNITY
-  🎓 IMPARA (prompt, skill, consigli)
-- Numera le voci progressivamente. Ogni voce su più righe:
-  N. [EN] frase o titolo originale in inglese
-     IT: sintesi chiara in italiano (1-2 frasi)
-     🔗 link
-- Gli URL vanno lasciati nudi (Telegram li rende cliccabili). Non accorciarli.
-- Tono sintetico e concreto. Tutto il testo finale a parte la riga "[EN] ..." deve essere in italiano.
-- Lunghezza totale: stai sotto i 3500 caratteri se possibile.
+Rispondi SOLO con un oggetto JSON valido in questa forma:
+{{"items": [
+  {{"cat": "<categoria>", "en": "<titolo/frase originale in INGLESE>",
+    "it": "<sintesi chiara in ITALIANO, 1-2 frasi>", "url": "<link della fonte>"}}
+]}}
 
-Se le news grezze sono poche o assenti, fai comunque del tuo meglio con quello che c'è\
- e aggiungi in fondo la riga "Giornata tranquilla sul fronte AI."
-
-Rispondi SOLO con il testo del messaggio Telegram, nient'altro.
+Regole:
+- "cat" DEVE essere una di: {", ".join(CATEGORY_KEYS)}
+  (annunci=nuovi modelli/release/feature; tool=strumenti e usi pratici;
+   ricerca=paper e novità di ricerca; dibattito=discussioni/opinioni/trend della community;
+   impara=prompt utili, skill nuove, consigli pratici per imparare).
+- "url" deve essere il link esatto preso dalla news grezza corrispondente.
+- "en" resta in inglese (originale); "it" è la tua sintesi in italiano.
+- 10-15 voci totali, ordinate per importanza. Niente testo fuori dal JSON.
 
 NEWS GREZZE:
 {raw}
@@ -147,8 +151,9 @@ def call_gemini(prompt, api_key):
         "generationConfig": {
             "temperature": 0.4,
             "maxOutputTokens": 4096,
+            "responseMimeType": "application/json",
             # gemini-2.5-flash usa il "thinking" che consuma il budget di output:
-            # lo azzeriamo per avere il testo completo del digest.
+            # lo azzeriamo per avere la risposta completa.
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
@@ -161,7 +166,8 @@ def call_gemini(prompt, api_key):
             )
             with request.urlopen(req, timeout=120) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
-            return body["candidates"][0]["content"]["parts"][0]["text"].strip()
+            text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
+            return parse_gemini_json(text)
         except error.HTTPError as exc:
             last_err = exc
             if exc.code in (429, 500, 503) and attempt < 3:
@@ -171,27 +177,87 @@ def call_gemini(prompt, api_key):
     raise last_err
 
 
-# --- Telegram ---------------------------------------------------------------
+def parse_gemini_json(text):
+    # togli eventuali recinti ```json ... ```
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = text[text.find("{"):]
+    data = json.loads(text)
+    items = data.get("items", []) if isinstance(data, dict) else []
+    cleaned = []
+    for it in items:
+        cat = (it.get("cat") or "").strip().lower()
+        if cat not in CATEGORY_KEYS:
+            cat = "annunci"
+        en = (it.get("en") or "").strip()
+        itx = (it.get("it") or "").strip()
+        url = (it.get("url") or "").strip()
+        if en and itx:
+            cleaned.append({"cat": cat, "en": en, "it": itx, "url": url})
+    return cleaned
 
-def split_message(text, limit=TELEGRAM_LIMIT):
-    if len(text) <= limit:
-        return [text]
-    chunks, current = [], ""
-    for line in text.split("\n"):
-        if len(current) + len(line) + 1 > limit:
-            chunks.append(current.rstrip())
+
+# --- Rendering messaggio (HTML Telegram) ------------------------------------
+
+def esc(text):
+    """Escape per HTML parse_mode di Telegram."""
+    return html.escape(text, quote=True)
+
+
+def render_blocks(items, today_str):
+    """Ritorna (header, [blocco_categoria, ...]) in HTML Telegram."""
+    header = (
+        "<pre>$ ai-news --today\n"
+        f"✓ {esc(today_str)}</pre>"
+    )
+    blocks = []
+    for key, emoji, label in CATEGORIES:
+        cat_items = [it for it in items if it["cat"] == key]
+        if not cat_items:
+            continue
+        head = f"<b>{emoji} {esc(label)} ({len(cat_items)})</b>"
+        rows = []
+        for it in cat_items:
+            url = it["url"]
+            en = esc(it["en"])
+            # il titolo stesso è il link: si tocca per aprire/salvare l'articolo
+            title = f'<a href="{esc(url)}"><b>{en}</b></a>' if url else f"<b>{en}</b>"
+            rows.append(f"{title}\n<i>{esc(it['it'])}</i>")
+        body = "\n\n".join(rows)
+        blocks.append(f"<blockquote expandable>{head}\n\n{body}</blockquote>")
+    return header, blocks
+
+
+def pack_messages(header, blocks, limit=TELEGRAM_LIMIT):
+    """Raggruppa header + blocchi-categoria in messaggi sotto il limite,
+    senza mai spezzare un blocco (l'HTML resterebbe rotto)."""
+    if not blocks:
+        return [header + "\n\nGiornata tranquilla sul fronte AI."]
+    messages, current = [], header
+    for block in blocks:
+        candidate = current + "\n\n" + block
+        if len(candidate) > limit and current != header:
+            messages.append(current)
+            current = block
+        else:
+            current = candidate
+        # se un singolo blocco supera il limite, lo manda comunque da solo
+        if len(current) > limit and current == block:
+            messages.append(current)
             current = ""
-        current += line + "\n"
-    if current.strip():
-        chunks.append(current.rstrip())
-    return chunks
+    if current:
+        messages.append(current)
+    return messages
 
+
+# --- Telegram ---------------------------------------------------------------
 
 def send_telegram(token, chat_id, text):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": str(chat_id),
         "text": text,
+        "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }
     data = json.dumps(payload).encode("utf-8")
@@ -218,19 +284,21 @@ def main():
     print(f"Raccolte {len(items)} news grezze dai feed.")
 
     try:
-        message = call_gemini(build_prompt(items, today_str), gemini_key)
+        news = call_gemini(build_prompt(items, today_str), gemini_key)
+        print(f"Gemini ha selezionato {len(news)} notizie.")
+        header, blocks = render_blocks(news, today_str)
+        messages = pack_messages(header, blocks)
     except Exception as exc:  # noqa: BLE001
-        print(f"[error] Gemini fallito: {exc}", file=sys.stderr)
-        message = (
-            f"☀️ AI News — {today_str}\n\n"
+        print(f"[error] generazione fallita: {exc}", file=sys.stderr)
+        messages = [
+            "<pre>$ ai-news --today\n✗ errore</pre>\n\n"
             "Oggi non sono riuscito a generare il digest (problema temporaneo). "
             "Riprovo domani."
-        )
+        ]
 
-    chunks = split_message(message)
-    for i, chunk in enumerate(chunks, 1):
-        send_telegram(token, chat_id, chunk)
-        print(f"Inviato messaggio {i}/{len(chunks)} ({len(chunk)} caratteri).")
+    for i, msg in enumerate(messages, 1):
+        send_telegram(token, chat_id, msg)
+        print(f"Inviato messaggio {i}/{len(messages)} ({len(msg)} caratteri).")
         time.sleep(1)
 
     print("Fatto.")

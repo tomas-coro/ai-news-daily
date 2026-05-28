@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI News Daily — Terminale con conteggi</title>
+<style>
+  :root{--tg-bg:#0e1621;--tg-bubble:#1b2735;--tg-text:#e9eef2;--tg-sub:#a7b4c0;--tg-link:#6ab7ff;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#06090d;color:var(--tg-text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:28px 14px 60px}
+  h1{font-size:19px;font-weight:700;text-align:center;margin:0 0 4px}
+  .sub{text-align:center;color:#8a97a3;font-size:13px;margin:0 0 26px}
+  .grid{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start}
+  .col{width:390px;max-width:100%}
+  .label{font-size:13px;font-weight:700;color:#cfe0ff;margin:0 0 4px}
+  .desc{font-size:12px;color:#7e8b97;margin:0 0 10px;min-height:46px}
+  .phone{background:var(--tg-bg);border-radius:18px;padding:14px 10px 18px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);border:1px solid #16202c;
+    background-image:radial-gradient(circle at 20% 10%,#16222f 0,transparent 40%),radial-gradient(circle at 80% 90%,#14202c 0,transparent 40%)}
+  .bubble{background:var(--tg-bubble);border-radius:14px;border-top-left-radius:4px;padding:11px 13px 8px;max-width:96%}
+  .time{font-size:11px;color:#6d7d8b;text-align:right;margin-top:3px}
+  a{color:var(--tg-link);text-decoration:none}
+  .mono{font-family:"SF Mono",Consolas,"Roboto Mono",monospace;font-size:13px;line-height:1.5;white-space:pre-wrap;color:#cfe0ff}
+  .mono .t{color:#e9eef2;font-weight:700}
+  .mono .s{color:#8a97a3}
+  .mono .g{color:#7fd18a}
+  .mono .dim{color:#5b6b7b}
+  .mono .cnt{color:#ffcb6b;font-weight:700}
+  .mono .prompt{color:#7fd18a;font-weight:700}
+  .mono .path{color:#6ab7ff}
+  .mono a{color:var(--tg-link)}
+</style>
+</head>
+<body>
+  <h1>AI News Daily · terminale + conteggio notizie</h1>
+  <p class="sub">J, K, L — tutte mostrano quante news ci sono. Dimmi quale (o un mix)</p>
+
+  <div class="grid">
+
+    <!-- ===== J: CLI con badge conteggi ===== -->
+    <div class="col">
+      <div class="label">J — CLI con badge</div>
+      <div class="desc">Come la G ma con la riga di stato: totale notizie + conteggio per categoria in badge [🚀 3]. Colpo d'occhio immediato.</div>
+      <div class="phone">
+        <div class="bubble">
+<div class="mono"><span class="prompt">$</span> <span class="path">ai-news</span> --today
+<span class="s">fetch ok ·</span> <span class="cnt">12 notizie</span> <span class="s">· 28.05.2026</span>
+<span class="dim">[🚀 3] [🛠 2] [🔬 2] [💬 2] [🎓 3]</span>
+
+<span class="t">▸ 🚀 ANNUNCI &amp; MODELLI <span class="cnt">(3)</span></span>
+ • <span class="t">Anthropic Opus 4.8</span>
+   <span class="s">nuovo tool "dynamic workflow"</span>
+   <a href="#">→ leggi</a>
+ • <span class="t">Apple: nuova app Siri</span>
+   <span class="s">sfida diretta a ChatGPT</span>
+   <a href="#">→ leggi</a>
+
+<span class="t">▸ 🛠 TOOL &amp; USO PRATICO <span class="cnt">(2)</span></span>
+ • <span class="t">Asana × Stack AI</span>
+   <span class="s">agenti AI senza codice</span>
+   <a href="#">→ leggi</a>
+
+<span class="t">▸ 🎓 IMPARA <span class="cnt">(3)</span></span>
+ • <span class="t">Prompt per code review</span>
+   <span class="s">schema pronto da copiare</span>
+   <a href="#">→ leggi</a>
+<span class="g">done.</span></div>
+          <div class="time">08:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== K: LOG ===== -->
+    <div class="col">
+      <div class="label">K — Log</div>
+      <div class="desc">Stile log di sistema: riga di riepilogo "trovate N notizie", categorie tra == == col conteggio, voci numerate [1].</div>
+      <div class="phone">
+        <div class="bubble">
+<div class="mono"><span class="t">☀ AI NEWS — 28.05.2026</span>
+<span class="prompt">&gt;</span> <span class="s">trovate</span> <span class="cnt">12 notizie</span> <span class="s">nelle ultime 24h</span>
+
+<span class="t">== 🚀 ANNUNCI <span class="cnt">(3)</span> ==</span>
+<span class="dim">[1]</span> <span class="t">Anthropic Opus 4.8</span>
+    <span class="s">nuovo tool "dynamic workflow"</span> · <a href="#">leggi</a>
+<span class="dim">[2]</span> <span class="t">Apple: nuova Siri</span>
+    <span class="s">sfida a ChatGPT</span> · <a href="#">leggi</a>
+
+<span class="t">== 🛠 TOOL <span class="cnt">(2)</span> ==</span>
+<span class="dim">[3]</span> <span class="t">Asana × Stack AI</span>
+    <span class="s">agenti AI senza codice</span> · <a href="#">leggi</a>
+
+<span class="t">== 🎓 IMPARA <span class="cnt">(3)</span> ==</span>
+<span class="dim">[4]</span> <span class="t">Prompt per code review</span>
+    <span class="s">schema pronto da copiare</span> · <a href="#">leggi</a></div>
+          <div class="time">08:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== L: STATS / NEOFETCH ===== -->
+    <div class="col">
+      <div class="label">L — Stats (neofetch)</div>
+      <div class="desc">Riquadro riepilogo in alto con statistiche (data, totale, conteggio per categoria), poi la lista. Da "pannello dati".</div>
+      <div class="phone">
+        <div class="bubble">
+<div class="mono"><span class="t">╭─ ☀ AI NEWS ───────────</span>
+<span class="t">│</span> <span class="s">data  </span> 28 maggio 2026
+<span class="t">│</span> <span class="s">totale</span> <span class="cnt">12 notizie</span>
+<span class="t">│</span> <span class="s">mix   </span> 🚀3 🛠2 🔬2 💬2 🎓3
+<span class="t">╰───────────────────────</span>
+
+<span class="t">🚀 ANNUNCI &amp; MODELLI</span>
+ › <span class="t">Anthropic Opus 4.8</span>
+   <span class="s">nuovo tool dynamic workflow</span> · <a href="#">leggi</a>
+ › <span class="t">Apple: nuova Siri vs ChatGPT</span>
+   <span class="s">sfida agli assistenti AI</span> · <a href="#">leggi</a>
+
+<span class="t">🛠 TOOL &amp; USO PRATICO</span>
+ › <span class="t">Asana × Stack AI</span>
+   <span class="s">agenti AI senza codice</span> · <a href="#">leggi</a>
+
+<span class="t">🎓 IMPARA</span>
+ › <span class="t">Prompt per code review</span>
+   <span class="s">schema pronto da copiare</span> · <a href="#">leggi</a></div>
+          <div class="time">08:00</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

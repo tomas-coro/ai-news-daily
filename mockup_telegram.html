@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI News Daily — Mockup grafica Telegram</title>
+<style>
+  :root{
+    --tg-bg:#0e1621; --tg-bubble:#1b2735; --tg-text:#e9eef2; --tg-sub:#a7b4c0;
+    --tg-link:#6ab7ff; --tg-accent:#5ea2ef; --tg-bar:#3d5a80; --tg-divider:#2a3a4d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#06090d;color:var(--tg-text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:28px 14px 60px}
+  h1{font-size:19px;font-weight:700;text-align:center;margin:0 0 4px}
+  .sub{text-align:center;color:#8a97a3;font-size:13px;margin:0 0 26px}
+  .grid{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start}
+  .col{width:380px;max-width:100%}
+  .label{font-size:13px;font-weight:700;color:#cfe0ff;margin:0 0 4px;letter-spacing:.3px}
+  .desc{font-size:12px;color:#7e8b97;margin:0 0 10px;min-height:32px}
+  .phone{background:var(--tg-bg);border-radius:18px;padding:14px 10px 18px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);border:1px solid #16202c;
+    background-image:radial-gradient(circle at 20% 10%,#16222f 0,transparent 40%),
+      radial-gradient(circle at 80% 90%,#14202c 0,transparent 40%)}
+  .bubble{background:var(--tg-bubble);border-radius:14px;border-top-left-radius:4px;
+    padding:11px 13px 8px;max-width:96%;font-size:14.5px;line-height:1.5;
+    box-shadow:0 1px 1px rgba(0,0,0,.25);white-space:normal}
+  .bubble + .bubble{margin-top:6px}
+  .time{font-size:11px;color:#6d7d8b;text-align:right;margin-top:3px}
+  b{font-weight:700}
+  i{color:var(--tg-sub);font-style:italic}
+  a{color:var(--tg-link);text-decoration:none}
+  .hdr{font-size:15.5px;font-weight:700}
+  .cat{font-weight:700;margin-top:12px;display:block}
+  .item{margin:7px 0}
+  .num{color:#7e8b97}
+  .en{font-weight:600}
+  .div{border:none;border-top:1px solid var(--tg-divider);margin:9px 0}
+  /* expandable blockquote look */
+  .quote{border-left:3px solid var(--tg-bar);padding:3px 0 3px 10px;margin:7px 0;
+    background:rgba(61,90,128,.10);border-radius:0 6px 6px 0}
+  .quotehead{font-weight:700;cursor:pointer;display:flex;justify-content:space-between}
+  .chev{color:#7e8b97;font-size:12px}
+  .mag-sep{color:#3d5a80;letter-spacing:2px;display:block;margin:10px 0 6px}
+  .pill{display:inline-block;background:#22344a;color:#cfe0ff;font-size:11px;
+    padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+  <h1>AI News Daily · come apparirà su Telegram</h1>
+  <p class="sub">3 stili a confronto — dimmi quale preferisci (o un mix)</p>
+
+  <div class="grid">
+
+    <!-- ===== STILE A: PULITO ===== -->
+    <div class="col">
+      <div class="label">Stile A — Pulito</div>
+      <div class="desc">Titolo in grassetto (EN), sintesi IT in corsivo, link "Leggi →". Righe sottili tra le news.</div>
+      <div class="phone">
+        <div class="bubble">
+          <span class="hdr">☀️ AI News</span><br>
+          <i>giovedì 28 maggio 2026</i>
+
+          <span class="cat">🚀 ANNUNCI &amp; MODELLI</span>
+          <div class="item">
+            <span class="num">1.</span> <span class="en">Anthropic releases Opus 4.8 with new “dynamic workflow” tool</span><br>
+            <i>Anthropic lancia Opus 4.8 con un nuovo strumento per orchestrare flussi di lavoro dinamici.</i><br>
+            <a href="#">🔗 Leggi →</a>
+          </div>
+          <hr class="div">
+          <div class="item">
+            <span class="num">2.</span> <span class="en">Apple previews new Siri app to take on ChatGPT</span><br>
+            <i>In arrivo una Siri rinnovata, pensata per competere con ChatGPT.</i><br>
+            <a href="#">🔗 Leggi →</a>
+          </div>
+
+          <span class="cat">🛠️ TOOL &amp; USO PRATICO</span>
+          <div class="item">
+            <span class="num">3.</span> <span class="en">Asana acquires no-code agent-builder Stack AI</span><br>
+            <i>Asana compra Stack AI: creare agenti AI senza scrivere codice.</i><br>
+            <a href="#">🔗 Leggi →</a>
+          </div>
+
+          <span class="cat">🎓 IMPARA</span>
+          <div class="item">
+            <span class="num">4.</span> <span class="en">A prompt pattern for cleaner code reviews</span><br>
+            <i>Uno schema di prompt per far revisionare il codice all'AI in modo più utile.</i><br>
+            <a href="#">🔗 Leggi →</a>
+          </div>
+          <div class="time">08:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STILE B: SEZIONI RICHIUDIBILI ===== -->
+    <div class="col">
+      <div class="label">Stile B — Sezioni richiudibili</div>
+      <div class="desc">Ogni categoria è un blocco "a tendina" (su Telegram si apre/chiude col tap). Messaggio compatto.</div>
+      <div class="phone">
+        <div class="bubble">
+          <span class="hdr">☀️ AI News</span> <span class="pill">12 notizie</span><br>
+          <i>giovedì 28 maggio 2026</i>
+
+          <div class="quote">
+            <div class="quotehead">🚀 Annunci &amp; modelli <span class="chev">▾ tocca</span></div>
+            <div class="item"><span class="en">Anthropic Opus 4.8</span> — <i>nuovo modello con tool “dynamic workflow”.</i> <a href="#">apri</a></div>
+            <div class="item"><span class="en">Apple Siri vs ChatGPT</span> — <i>nuova app Siri in arrivo.</i> <a href="#">apri</a></div>
+          </div>
+
+          <div class="quote">
+            <div class="quotehead">🛠️ Tool &amp; uso pratico <span class="chev">▾ tocca</span></div>
+            <div class="item"><span class="en">Asana × Stack AI</span> — <i>agenti AI no-code.</i> <a href="#">apri</a></div>
+          </div>
+
+          <div class="quote">
+            <div class="quotehead">🔬 Ricerca &amp; paper <span class="chev">▾ tocca</span></div>
+            <div class="item"><span class="en">New attention method</span> — <i>contesti più lunghi, meno memoria.</i> <a href="#">apri</a></div>
+          </div>
+          <div class="time">08:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STILE C: MAGAZINE ===== -->
+    <div class="col">
+      <div class="label">Stile C — Magazine</div>
+      <div class="desc">Più arioso: separatori decorativi, titoletti, niente numeri. Stile “rivista”.</div>
+      <div class="phone">
+        <div class="bubble">
+          <div style="text-align:center">
+            <span class="hdr">☀️ A I&nbsp;&nbsp;N E W S</span><br>
+            <i>giovedì 28 maggio 2026</i>
+          </div>
+
+          <span class="mag-sep">━━━ 🚀 ANNUNCI ━━━</span>
+          <div class="item">
+            <span class="en">Anthropic Opus 4.8</span><br>
+            <i>Nuovo modello con strumento per flussi di lavoro dinamici.</i><br>
+            <span style="font-size:12px;color:#7e8b97">EN: “…with new dynamic workflow tool”</span> · <a href="#">Leggi</a>
+          </div>
+
+          <span class="mag-sep">━━━ 🛠️ TOOL ━━━</span>
+          <div class="item">
+            <span class="en">Asana compra Stack AI</span><br>
+            <i>Costruisci agenti AI senza codice.</i><br>
+            <a href="#">Leggi</a>
+          </div>
+
+          <span class="mag-sep">━━━ 🎓 IMPARA ━━━</span>
+          <div class="item">
+            <span class="en">Prompt per code review</span><br>
+            <i>Schema pronto per revisioni più pulite.</i><br>
+            <a href="#">Leggi</a>
+          </div>
+          <div class="time">08:00</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
