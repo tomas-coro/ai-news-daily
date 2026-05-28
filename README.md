@@ -1,39 +1,50 @@
 # AI News Daily
 
-Agente che ogni mattina alle **08:00 (ora italiana)** manda su **Telegram** un
+Bot che ogni mattina alle **08:00 (ora italiana)** manda su **Telegram** un
 digest delle news AI delle ultime 24-48h, diviso per categorie, con frase in
 inglese (originale) + sintesi in italiano + link.
 
 ## Come funziona
 
-È una **routine schedulata di Claude Code** (agente remoto in cloud). Non c'è
-codice da eseguire localmente: l'agente *è* il programma. Ogni giorno fa
-ricerche web, seleziona le notizie, le traduce e le invia al bot Telegram.
+Un **GitHub Actions** schedulato (cron) gira ogni giorno:
+1. raccoglie news AI da vari feed RSS (`ai_news_digest.py`),
+2. le fa selezionare, categorizzare e tradurre in italiano da **Google Gemini**
+   (piano gratuito),
+3. invia il digest al bot **Telegram**.
+
+Gira nei server di GitHub: nessun PC acceso, costo zero.
 
 ## Componenti
 
 | Componente | Valore |
 |------------|--------|
 | Bot Telegram | `@AiNius_bot` (nome: *Ai News Daily*) |
-| chat_id destinatario | `144574389` |
-| Routine ID | `trig_01XGZCqMRhg5UjZZgqMbR9vf` |
-| Schedule | `0 6 * * *` UTC = 08:00 Europe/Rome (ora legale) |
-| Modello | `claude-sonnet-4-6` |
-| Ambiente | `env_01LqG4QzRKiJ7D9dkQGbmaRr` (Default) |
+| Script | `ai_news_digest.py` |
+| Workflow | `.github/workflows/daily.yml` (cron `0 6 * * *` UTC = 08:00 CEST) |
+| Modello AI | `gemini-2.5-flash` (free tier, thinking disabilitato) |
 
-## Gestione
+## Segreti richiesti (GitHub → Settings → Secrets and variables → Actions)
 
-- Pannello routine: https://claude.ai/code/routines/trig_01XGZCqMRhg5UjZZgqMbR9vf
-- Tutte le routine: https://claude.ai/code/routines
+| Nome segreto | Cosa contiene |
+|--------------|---------------|
+| `TELEGRAM_BOT_TOKEN` | token del bot (da @BotFather) |
+| `TELEGRAM_CHAT_ID` | id chat destinatario |
+| `GEMINI_API_KEY` | chiave Google AI Studio (free) |
+
+## Test manuale
+
+GitHub → tab **Actions** → workflow *AI News Daily* → **Run workflow**.
 
 ## Note
 
 - **Ora legale/solare:** il cron è in UTC fisso. `0 6 * * *` = 08:00 in ora
-  legale (CEST, UTC+2, ~mar-ott). In ora solare (CET, UTC+1) diventerebbe 07:00:
-  per riavere le 08:00 in inverno, aggiornare il cron a `0 7 * * *`.
-- **Token Telegram:** è dentro le istruzioni della routine. Se viene
-  rigenerato da BotFather, aggiornare la routine (azione `update`).
-- La spec di design è in `docs/superpowers/specs/`.
+  legale (CEST). In ora solare (inverno) diventa 07:00: per riavere le 08:00
+  cambiare il cron a `0 7 * * *`.
+- I feed RSS sono in `FEEDS` dentro `ai_news_digest.py`: aggiungere/togliere
+  fonti lì.
+- Storia: il primo tentativo usava una routine schedulata di Claude Code, ma
+  quell'ambiente non può contattare Telegram (rete isolata). Da qui il passaggio
+  a GitHub Actions. Vedi `docs/superpowers/specs/`.
 
 ## Possibili evoluzioni
 
