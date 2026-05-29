@@ -2,8 +2,10 @@ name: AI News Daily
 
 on:
   schedule:
-    # 06:00 UTC = 08:00 ora italiana (ora legale CEST). In ora solare diventa 07:00.
-    - cron: "0 6 * * *"
+    # 06:07 UTC = 08:07 ora italiana (ora legale CEST). In ora solare diventa 07:07.
+    # Pochi minuti dopo l'ora esatta: l'inizio di ogni ora e' la fascia piu'
+    # congestionata su GitHub Actions, dove i cron vengono ritardati o saltati.
+    - cron: "7 6 * * *"
   workflow_dispatch:   # permette il lancio manuale dal sito GitHub (per i test)
 
 jobs:
