@@ -166,15 +166,45 @@ def call_gemini(prompt, api_key):
             )
             with request.urlopen(req, timeout=120) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
-            text = body["candidates"][0]["content"]["parts"][0]["text"].strip()
-            return parse_gemini_json(text)
+            return parse_gemini_json(extract_gemini_text(body))
         except error.HTTPError as exc:
-            last_err = exc
+            # il corpo della risposta di Google contiene la causa vera
+            # (chiave non valida, quota esaurita, modello inesistente, ...)
+            detail = exc.read().decode("utf-8", "replace")[:500]
+            last_err = RuntimeError(f"Gemini HTTP {exc.code}: {detail}")
             if exc.code in (429, 500, 503) and attempt < 3:
                 time.sleep(5 * (attempt + 1))
                 continue
-            raise
+            raise last_err from None
+        except error.URLError as exc:
+            last_err = RuntimeError(f"Gemini irraggiungibile (rete): {exc.reason}")
+            if attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise last_err from None
     raise last_err
+
+
+def extract_gemini_text(body):
+    """Estrae il testo dalla risposta di Gemini con messaggi chiari quando
+    manca (prompt bloccato, output troncato per MAX_TOKENS, ecc.) invece di
+    far esplodere un IndexError/KeyError indecifrabile."""
+    candidates = body.get("candidates") or []
+    if not candidates:
+        block = (body.get("promptFeedback") or {}).get("blockReason")
+        raise RuntimeError(
+            f"Gemini non ha restituito candidati (blockReason={block}). "
+            f"Risposta: {json.dumps(body)[:300]}"
+        )
+    cand = candidates[0]
+    parts = (cand.get("content") or {}).get("parts") or []
+    if not parts:
+        raise RuntimeError(
+            f"Gemini ha risposto senza testo (finishReason="
+            f"{cand.get('finishReason')}). Possibile output troncato: "
+            "prova ad alzare maxOutputTokens o a ridurre le news in input."
+        )
+    return (parts[0].get("text") or "").strip()
 
 
 def parse_gemini_json(text):
@@ -264,42 +294,77 @@ def send_telegram(token, chat_id, text):
     req = request.Request(
         url, data=data, headers={"Content-Type": "application/json; charset=utf-8"}
     )
-    with request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
+    try:
+        with request.urlopen(req, timeout=30) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")[:300]
+        if exc.code == 401:
+            hint = " -> TELEGRAM_BOT_TOKEN non valido (rigeneralo con /token su @BotFather)."
+        elif exc.code in (400, 403):
+            hint = " -> TELEGRAM_CHAT_ID errato, oppure il bot non ha mai ricevuto /start dall'utente."
+        else:
+            hint = ""
+        raise RuntimeError(f"Telegram HTTP {exc.code}{hint} Risposta: {detail}") from None
     if not body.get("ok"):
-        raise RuntimeError(f"Telegram error: {body}")
+        raise RuntimeError(f"Telegram ha rifiutato la richiesta: {body}")
     return body
 
 
 # --- Main -------------------------------------------------------------------
 
+def require_env(*names):
+    """Legge le variabili d'ambiente richieste, fa strip() di spazi/newline
+    (causa tipica di token "validi" ma rifiutati) e ferma lo script con un
+    messaggio chiaro se ne manca qualcuna, invece di un KeyError criptico."""
+    missing = [n for n in names if not os.environ.get(n, "").strip()]
+    if missing:
+        print(
+            "[error] secret mancanti o vuoti: " + ", ".join(missing) + ".\n"
+            "Configurali nel repo: Settings -> Secrets and variables -> Actions.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return tuple(os.environ[n].strip() for n in names)
+
+
 def main():
-    token = os.environ["TELEGRAM_BOT_TOKEN"]
-    chat_id = os.environ["TELEGRAM_CHAT_ID"]
-    gemini_key = os.environ["GEMINI_API_KEY"]
+    token, chat_id, gemini_key = require_env(
+        "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "GEMINI_API_KEY"
+    )
 
     today_str = dt.datetime.now().strftime("%d/%m/%Y")
 
     items = collect_items()
     print(f"Raccolte {len(items)} news grezze dai feed.")
 
+    gen_error = None
     try:
         news = call_gemini(build_prompt(items, today_str), gemini_key)
         print(f"Gemini ha selezionato {len(news)} notizie.")
         header, blocks = render_blocks(news, today_str)
         messages = pack_messages(header, blocks)
     except Exception as exc:  # noqa: BLE001
-        print(f"[error] generazione fallita: {exc}", file=sys.stderr)
+        gen_error = str(exc)
+        print(f"[error] generazione fallita: {gen_error}", file=sys.stderr)
         messages = [
             "<pre>$ ai-news --today\n✗ errore</pre>\n\n"
             "Oggi non sono riuscito a generare il digest (problema temporaneo). "
-            "Riprovo domani."
+            "Riprovo domani.\n\n"
+            f"<i>dettaglio: {esc(gen_error[:300])}</i>"
         ]
 
     for i, msg in enumerate(messages, 1):
         send_telegram(token, chat_id, msg)
         print(f"Inviato messaggio {i}/{len(messages)} ({len(msg)} caratteri).")
         time.sleep(1)
+
+    if gen_error:
+        # il fallback è partito (così l'utente è avvisato), ma l'esecuzione
+        # NON è andata a buon fine: la marchiamo come fallita per non avere
+        # un run "verde" ingannevole su GitHub Actions.
+        print("[error] digest inviato in modalità fallback.", file=sys.stderr)
+        sys.exit(1)
 
     print("Fatto.")
 
