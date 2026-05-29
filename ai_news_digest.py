@@ -25,6 +25,11 @@ LOOKBACK_HOURS = 48
 MAX_ITEMS_TO_GEMINI = 60      # quante news grezze passiamo al modello
 TELEGRAM_LIMIT = 4000        # margine sotto il limite reale di 4096
 
+# Memoria persistente delle news gia' inviate (committata nel repo dal workflow),
+# cosi' i digest dei giorni successivi non ripetono le stesse notizie.
+STATE_FILE = os.path.join("state", "sent.json")
+STATE_RETENTION_DAYS = 30    # dopo quanto dimentichiamo un link gia' inviato
+
 # Feed RSS gratuiti, raggruppati per "taglio" (Gemini ricategorizza comunque).
 FEEDS = [
     # Annunci & modelli / news generali
@@ -311,6 +316,40 @@ def send_telegram(token, chat_id, text):
     return body
 
 
+# --- Stato (dedup tra i giorni) ---------------------------------------------
+
+def load_sent():
+    """Mappa {link: data_invio_iso} dei link gia' inviati. File assente o
+    corrotto -> si riparte da vuoto (mai un crash per colpa dello stato)."""
+    try:
+        with open(STATE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def prune_sent(sent):
+    """Scarta i link piu' vecchi di STATE_RETENTION_DAYS per non far crescere
+    il file all'infinito (la finestra dei feed e' solo 48h, 30 giorni bastano)."""
+    cutoff = dt.datetime.now(tz=dt.timezone.utc) - dt.timedelta(days=STATE_RETENTION_DAYS)
+    kept = {}
+    for link, ts in sent.items():
+        try:
+            when = dt.datetime.fromisoformat(ts)
+        except (ValueError, TypeError):
+            continue  # voce malformata: la lasciamo cadere
+        if when >= cutoff:
+            kept[link] = ts
+    return kept
+
+
+def save_sent(sent):
+    os.makedirs(os.path.dirname(STATE_FILE) or ".", exist_ok=True)
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(sent, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
 # --- Main -------------------------------------------------------------------
 
 def require_env(*names):
@@ -338,7 +377,14 @@ def main():
     items = collect_items()
     print(f"Raccolte {len(items)} news grezze dai feed.")
 
+    # scarta cio' che e' gia' stato inviato nei giorni precedenti
+    sent = prune_sent(load_sent())
+    before = len(items)
+    items = [it for it in items if it["link"] not in sent]
+    print(f"{before - len(items)} gia' inviate in passato, {len(items)} nuove.")
+
     gen_error = None
+    news = []
     try:
         news = call_gemini(build_prompt(items, today_str), gemini_key)
         print(f"Gemini ha selezionato {len(news)} notizie.")
@@ -358,6 +404,16 @@ def main():
         send_telegram(token, chat_id, msg)
         print(f"Inviato messaggio {i}/{len(messages)} ({len(msg)} caratteri).")
         time.sleep(1)
+
+    # registra come "inviate" solo le notizie effettivamente uscite nel digest,
+    # cosi' i prossimi run non le ripropongono (solo se non e' un fallback)
+    if not gen_error and news:
+        now_iso = dt.datetime.now(tz=dt.timezone.utc).isoformat()
+        for it in news:
+            if it.get("url"):
+                sent[it["url"]] = now_iso
+        save_sent(sent)
+        print(f"Stato aggiornato: {len(sent)} link in memoria ({STATE_FILE}).")
 
     if gen_error:
         # il fallback è partito (così l'utente è avvisato), ma l'esecuzione

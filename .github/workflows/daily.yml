@@ -9,6 +9,8 @@ on:
 jobs:
   digest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # serve per ricommittare state/sent.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,3 +29,16 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python ai_news_digest.py
+
+      - name: Persist sent state
+        if: success()   # solo se il digest e' stato inviato davvero (no fallback)
+        run: |
+          if [ -n "$(git status --porcelain state/sent.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add state/sent.json
+            git commit -m "chore: aggiorna stato news inviate [skip ci]"
+            git push
+          else
+            echo "Nessuna modifica allo stato, niente da committare."
+          fi
